@@ -2,15 +2,17 @@ from game_night_slack.auth import GameNightAuth
 from os import environ
 from flask import request
 from requests import get
+from fuzzywuzzy.process import extractOne
 
 _auth = GameNightAuth(environ['GAME_NIGHT_API_KEY'])
 
 def owner():
     name = request.form['text']
     if name:
-        game = get(environ['GAME_NIGHT_URL'], auth = _auth, params = {'name': '^' + name + '$'}).json()
-        if game:
-            game = game[0]
+        games = get(environ['GAME_NIGHT_URL'], auth = _auth, params = {'name': name}).json()
+        if games:
+            name = extractOne(name, map(lambda game: game['name'], games))[0]
+            game = next(filter(lambda game : game['name'] == name, games))
             return '*{}* owns *{}*.'.format(game.get('owner', 'CSH'), game['name'])
         return 'No one owns "{}".'.format(name)
     return 'Usage: /gn-owner name'
