@@ -1,8 +1,9 @@
-from game_night_slack.commands import owner, search
+from game_night_slack.commands import newest, owner, search
 from flask import abort, Flask, jsonify, request
 from os import environ
 
 commands = {
+    '/gn-newest': newest,
     '/gn-owner': owner,
     '/gn-search': search
 }
