@@ -15,5 +15,6 @@ def main():
     if request.form.get('token') == environ['SLACK_VERIFICATION_TOKEN']:
         command = commands.get(request.form.get('command'))
         if command:
-            return jsonify({'response_type': 'in_channel', 'text': command()})
+            text, error = command()
+            return jsonify({'response_type': 'ephemeral' if error else 'in_channel', 'text': text})
     abort(403)

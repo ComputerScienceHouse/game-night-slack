@@ -13,17 +13,17 @@ def newest():
     arguments = request.form['text'].split()
     params = {}
     if _parse_arguments(arguments, params) is None:
-        return 'Usage: /gn-newest [-p|--players]'
+        return 'Usage: /gn-newest [-p|--players]', True
     games = get(urljoin(environ['GAME_NIGHT_URL'], 'newest'), auth = _auth, params = params).json()
     if len(games) == 0:
-        return 'None of the newest games support {} player(s).'.format(params['players'])
+        return 'None of the newest games support {} player(s).'.format(params['players']), False
     elif len(games) == 1:
         try:
-            return 'One of the newest games that supports {} player(s) is *{}*.'.format(params['players'], games[0]['name'])
+            return 'One of the newest games that supports {} player(s) is *{}*.'.format(params['players'], games[0]['name']), False
         except:
-            return 'The newest game is *{}*.'.format(games[0]['name'])
+            return 'The newest game is *{}*.'.format(games[0]['name']), False
     extra = ' that support {} player(s)'.format(params['players']) if 'players' in params else ''
-    return 'The {} newest games{} are {}.'.format(len(games), extra, ', '.join(map(_game_mapper, games)))
+    return 'The {} newest games{} are {}.'.format(len(games), extra, ', '.join(map(_game_mapper, games))), False
 
 def owner():
     name = request.form['text']
@@ -32,9 +32,9 @@ def owner():
         if games:
             name = extractOne(name, map(lambda game: game['name'], games))[0]
             game = next(filter(lambda game : game['name'] == name, games))
-            return '*{}* owns *{}*.'.format(game.get('owner', 'CSH'), game['name'])
-        return 'No one owns "{}".'.format(name)
-    return 'Usage: /gn-owner name'
+            return '*{}* owns *{}*.'.format(game.get('owner', 'CSH'), game['name']), False
+        return 'No one owns "{}".'.format(name), False
+    return 'Usage: /gn-owner name', True
 
 def _parse_arguments(arguments, params):
     if arguments and arguments[0] in ['-p', '--players']:
@@ -51,15 +51,15 @@ def search():
         params = {}
         arguments = _parse_arguments(arguments, params)
         if arguments is None:
-            return 'Usage: /gn-search [-p|--players] name'
+            return 'Usage: /gn-search [-p|--players] name', True
         params['name'] = ' '.join(arguments)
         games = get(environ['GAME_NIGHT_URL'], auth = _auth, params = params).json()
         if len(games) == 0:
             extra = ' and support {} player(s)'.format(params['players']) if 'players' in params else ''
-            return 'We don\'t have any games that match "{}"{}.'.format(params['name'], extra)
+            return 'We don\'t have any games that match "{}"{}.'.format(params['name'], extra), False
         elif len(games) == 1:
             extra = ' and supports {} player(s)'.format(params['players']) if 'players' in params else ''
-            return 'We have 1 game that matches "{}"{} - *{}*.'.format(params['name'], extra, games[0]['name'])
+            return 'We have 1 game that matches "{}"{} - *{}*.'.format(params['name'], extra, games[0]['name']), False
         extra = ' and support {} player(s)'.format(params['players']) if 'players' in params else ''
-        return 'We have {} games that match "{}"{} - {}.'.format(len(games), params['name'], extra, ', '.join(map(_game_mapper, games)))
-    return 'Usage: /gn-search [-p|--players] name'
+        return 'We have {} games that match "{}"{} - {}.'.format(len(games), params['name'], extra, ', '.join(map(_game_mapper, games))), False
+    return 'Usage: /gn-search [-p|--players] name', True
