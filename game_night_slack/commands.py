@@ -6,15 +6,19 @@ from urllib.parse import urljoin
 from fuzzywuzzy.process import extractOne
 
 _game_mapper = lambda game: '*' + game['name'] + '*'
+_unreachable = 'Game Night is unreachable at the moment. Please try again later.', True
 
 _auth = GameNightAuth(environ['GAME_NIGHT_API_KEY'])
 
 def newest():
-    arguments = request.form['text'].split()
+    arguments = request.form.get('text', '').split()
     params = {}
     if _parse_arguments(arguments, params) is None:
         return 'Usage: /gn-newest [-p|--players]', True
-    games = get(urljoin(environ['GAME_NIGHT_URL'], 'newest'), auth = _auth, params = params).json()
+    try:
+        games = get(urljoin(environ['GAME_NIGHT_URL'], 'newest'), auth = _auth, params = params).json()
+    except:
+        return _unreachable
     if len(games) == 0:
         return 'None of the newest games support {} player(s).'.format(params['players']), False
     elif len(games) == 1:
@@ -26,9 +30,12 @@ def newest():
     return 'The {} newest games{} are {}.'.format(len(games), extra, ', '.join(map(_game_mapper, games))), False
 
 def owner():
-    name = request.form['text']
+    name = request.form.get('text')
     if name:
-        games = get(environ['GAME_NIGHT_URL'], auth = _auth, params = {'name': name}).json()
+        try:
+            games = get(environ['GAME_NIGHT_URL'], auth = _auth, params = {'name': name}).json()
+        except:
+            return _unreachable
         if games:
             name = extractOne(name, map(lambda game: game['name'], games))[0]
             game = next(filter(lambda game : game['name'] == name, games))
@@ -46,14 +53,17 @@ def _parse_arguments(arguments, params):
     return arguments
 
 def search():
-    arguments = request.form['text'].split()
+    arguments = request.form.get('text', '').split()
     if arguments:
         params = {}
         arguments = _parse_arguments(arguments, params)
         if arguments is None:
             return 'Usage: /gn-search [-p|--players] name', True
         params['name'] = ' '.join(arguments)
-        games = get(environ['GAME_NIGHT_URL'], auth = _auth, params = params).json()
+        try:
+            games = get(environ['GAME_NIGHT_URL'], auth = _auth, params = params).json()
+        except:
+            return _unreachable
         if len(games) == 0:
             extra = ' and support {} player(s)'.format(params['players']) if 'players' in params else ''
             return 'We don\'t have any games that match "{}"{}.'.format(params['name'], extra), False
