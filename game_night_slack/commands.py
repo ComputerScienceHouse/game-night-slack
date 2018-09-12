@@ -14,8 +14,10 @@ _auth = GameNightAuth(environ['GAME_NIGHT_API_KEY'])
 def newest():
     arguments = request.form.get('text', '').split()
     params = {}
-    if _parse_parameters(arguments, params) is None:
-        return _usage('newest', True)
+    try:
+        _parse_parameters(arguments, params)
+    except:
+        return _newest_usage
     try:
         games = get(urljoin(environ['GAME_NIGHT_URL'], 'newest'), auth = _auth, params = params).json()
     except:
@@ -28,35 +30,35 @@ def newest():
 
 def owner():
     name = request.form.get('text')
-    if name:
-        try:
-            games = get(environ['GAME_NIGHT_URL'], auth = _auth, params = {'name': name}).json()
-        except:
-            return _unreachable
-        if games:
-            name = extractOne(name, (game['name'] for game in games))[0]
-            game = next((game for game in games if game['name'] == name))
-            return f'*{game.get("owner", "CSH")}* owns *{game["name"]}*.', False
+    if not name:
+        return _owner_usage
+    try:
+        games = get(environ['GAME_NIGHT_URL'], auth = _auth, params = {'name': name}).json()
+    except:
+        return _unreachable
+    if not games:
         return f'No one owns "{name}".', False
-    return _usage('owner', False, [('name', False)])
+    name = extractOne(name, (game['name'] for game in games))[0]
+    game = next((game for game in games if game['name'] == name))
+    return f'*{game.get("owner", "CSH")}* owns *{game["name"]}*.', False
 
 def _parse_parameters(arguments, params):
-    while arguments and arguments[0] in ['-o', '--owner', '-p', '--players']:
-        try:
-            if '-o' in arguments[0]:
-                params['owner'] = arguments[1]
-            else:
-                params['players'] = arguments[1]
-            arguments = arguments[2:]
-        except:
-            return None
+    while arguments and arguments[0] in ['-o', '--owner', '-p', '--players', '-s', '--submitter']:
+        if '-o' in arguments[0]:
+            params['owner'] = arguments[1]
+        elif '-p' in arguments[0]:
+            params['players'] = arguments[1]
+        else:
+            params['submitter'] = arguments[1]
+        arguments = arguments[2:]
     return arguments
 
 def search():
     params = {}
-    arguments = _parse_parameters(request.form.get('text', '').split(), params)
-    if arguments is None:
-        return _usage('search', True, [('name', True)])
+    try:
+        arguments = _parse_parameters(request.form.get('text', '').split(), params)
+    except:
+        return _search_usage
     if arguments:
         params['name'] = ' '.join(arguments)
     elif not params:
@@ -81,5 +83,10 @@ def _usage(command, params = False, arguments = []):
         usage += '''\nWhere `OPTION` is one of:
 
 `-o`, `--owner`\t\tNarrow down the results by the specified game owner.
-`-p`, `--players`\tNarrow down the results by the supported number of players.'''
+`-p`, `--players`\tNarrow down the results by the supported number of players.
+`-s`, `--submitter`\tNarrow down the results by the specified game submitter.'''
     return usage, True
+
+_newest_usage = _usage('newest', True)
+_owner_usage = _usage('owner', False, [('name', False)])
+_search_usage = _usage('search', True, [('name', True)])
