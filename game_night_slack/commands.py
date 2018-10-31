@@ -1,11 +1,13 @@
-from game_night_slack.auth import GameNightAuth
+from urllib.parse import urljoin
 from os import environ
+from game_night_slack.auth import GameNightAuth
 from flask import request
 from requests import get
-from urllib.parse import urljoin
 from fuzzywuzzy.process import extractOne
 
+_count_url = urljoin(environ['GAME_NIGHT_URL'], 'count')
 _games = lambda games: ', '.join((f'*{game["name"]}*' for game in games))
+_newest_url = urljoin(environ['GAME_NIGHT_URL'], 'newest')
 _parameters = lambda params: f'({", ".join((key + "=" + value for key, value in params.items()))})'
 _unreachable = 'Game Night is unreachable at the moment. Please try again later.', True
 
@@ -19,7 +21,7 @@ def newest():
     except:
         return _newest_usage
     try:
-        games = get(urljoin(environ['GAME_NIGHT_URL'], 'newest'), auth = _auth, params = params).json()
+        games = get(_newest_url, auth = _auth, params = params).json()
     except:
         return _unreachable
     if len(games) == 0:
@@ -40,7 +42,7 @@ def owner():
         return f'No one owns "{name}".', False
     name = extractOne(name, (game['name'] for game in games))[0]
     game = next((game for game in games if game['name'] == name))
-    return f'*{game.get("owner", "CSH")}* owns *{game["name"]}*.', False
+    return f'*{game["owner"]}* owns *{game["name"]}*.', False
 
 def _parse_parameters(arguments, params):
     while arguments and arguments[0] in ['-o', '--owner', '-p', '--players', '-s', '--submitter']:
@@ -64,6 +66,7 @@ def search():
     elif not params:
         return 'This query would return all games. Use some filters to narrow down the results.', True
     try:
+        count = get(_count_url, auth = _auth).json()
         games = get(environ['GAME_NIGHT_URL'], auth = _auth, params = params).json()
     except:
         return _unreachable
@@ -71,6 +74,8 @@ def search():
         return f'We don\'t have any games that match the parameters {_parameters(params)}.', False
     elif len(games) == 1:
         return f'We have 1 game that matches the parameters {_parameters(params)} - *{games[0]["name"]}*.', False
+    if count == len(games):
+        return 'This query would return all games. Use different filters to narrow down the results.', True
     return f'We have {len(games)} games that match the parameters {_parameters(params)} - {_games(games)}.', False
 
 def _usage(command, params = False, arguments = []):
