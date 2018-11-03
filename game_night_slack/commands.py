@@ -13,6 +13,28 @@ _unreachable = 'Game Night is unreachable at the moment. Please try again later.
 
 _auth = GameNightAuth(environ['GAME_NIGHT_API_KEY'])
 
+def info():
+    name = request.form.get('text')
+    if not name:
+        return _info_usage
+    try:
+        games = get(environ['GAME_NIGHT_URL'], auth = _auth, params = {'name': name}).json()
+    except:
+        return _unreachable
+    if not games:
+        return f'"{name}" doesn\'t exist.', False
+    name = extractOne(name, (game['name'] for game in games))[0]
+    game = next(game for game in games if game['name'] == name)
+    text = f'*<{game["link"]}|{game["name"]}>*\n\n'
+    try:
+        text += f'Expansion: *{game["expansion"]}*\n'
+    except:
+        pass
+    return text + f'''Owner: *{game["owner"]}*
+Players: *{game["min_players"]}* - *{game["max_players"]}*
+Submitter: *{game["submitter"]}*
+''', False
+
 def newest():
     arguments = request.form.get('text', '').split()
     params = {}
@@ -29,20 +51,6 @@ def newest():
     elif len(games) == 1:
         return f'The newest game that matches the parameters {_parameters(params)} is *{games[0]["name"]}*.', False
     return f'The {len(games)} newest games that match the parameters {_parameters(params)} are {_games(games)}.', False
-
-def owner():
-    name = request.form.get('text')
-    if not name:
-        return _owner_usage
-    try:
-        games = get(environ['GAME_NIGHT_URL'], auth = _auth, params = {'name': name}).json()
-    except:
-        return _unreachable
-    if not games:
-        return f'No one owns "{name}".', False
-    name = extractOne(name, (game['name'] for game in games))[0]
-    game = next((game for game in games if game['name'] == name))
-    return f'*{game["owner"]}* owns *{game["name"]}*.', False
 
 def _parse_parameters(arguments, params):
     while arguments and arguments[0] in ['-o', '--owner', '-p', '--players', '-s', '--submitter']:
@@ -92,6 +100,6 @@ def _usage(command, params = False, arguments = []):
 `-s`, `--submitter`\tNarrow down the results by the specified game submitter.'''
     return usage, True
 
+_info_usage = _usage('info', False, [('name', False)])
 _newest_usage = _usage('newest', True)
-_owner_usage = _usage('owner', False, [('name', False)])
 _search_usage = _usage('search', True, [('name', True)])
