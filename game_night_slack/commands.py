@@ -14,7 +14,10 @@ _unreachable = 'Game Night is unreachable at the moment. Please try again later.
 _auth = GameNightAuth(environ['GAME_NIGHT_API_KEY'])
 
 def info():
-    name = request.form.get('text')
+    arguments = request.form.get('text', '').split()
+    if arguments and arguments[0] in ['-h', '--help']:
+        return _info_usage
+    name = ' '.join(arguments)
     if not name:
         return _info_usage
     try:
@@ -53,7 +56,9 @@ def newest():
     return f'The {len(games)} newest games that match the parameters {_parameters(params)} are {_games(games)}.', False
 
 def _parse_parameters(arguments, params):
-    while arguments and arguments[0] in ['-o', '--owner', '-p', '--players', '-s', '--submitter']:
+    while arguments and arguments[0] in ['-h', '--help', '-o', '--owner', '-p', '--players', '-s', '--submitter']:
+        if '-h' in arguments[0]:
+            raise Exception()
         if '-o' in arguments[0]:
             params['owner'] = arguments[1]
         elif '-p' in arguments[0]:
@@ -88,13 +93,13 @@ def search():
 
 def _usage(command, params = False, arguments = []):
     usage = f'Usage: `/gn-{command}`'
-    if params:
-        usage += ' [`OPTION`...]'
+    usage += ' [`OPTION`...]' if params else ' [`-h|--help`]'
     for argument, optional in arguments:
         usage += f' [`{argument}`]' if optional else f' `{argument}`'
     if params:
         usage += '''\nWhere `OPTION` is one of:
 
+`-h`, `--help`\t\tPrint the usage information for this command.
 `-o`, `--owner`\t\tNarrow down the results by the specified game owner.
 `-p`, `--players`\tNarrow down the results by the supported number of players.
 `-s`, `--submitter`\tNarrow down the results by the specified game submitter.'''
