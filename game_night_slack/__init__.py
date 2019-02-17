@@ -10,7 +10,7 @@ _commands = {
 
 app = Flask(__name__)
 
-@app.route('/', methods = ['POST'])
+@app.route('/' + environ.get('ENDPOINT', ''), methods = ['POST'])
 def main():
     if request.form.get('token') == environ['SLACK_VERIFICATION_TOKEN']:
         try:
